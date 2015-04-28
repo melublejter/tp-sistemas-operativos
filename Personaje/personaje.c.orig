@@ -1,0 +1,1194 @@
+/*
+ * Sistemas Operativos - Super Mario Proc RELOADED.
+ * Grupo       : C o no ser.
+ * Nombre      : personaje.c.
+ * Descripcion : Este archivo contiene la implementacion de las
+ * funciones usadas por el personaje.
+ */
+
+#include "personaje.h"
+
+<<<<<<< HEAD
+pthread_mutex_t mtxlPersPorNivel;
+pthread_mutex_t semMovement;
+pthread_mutex_t semModificadorDeVidas;
+pthread_mutex_t semTerminoBien;
+pthread_mutex_t semTermino;
+pthread_mutex_t semContinuar;
+
+bool continuar = false;
+=======
+pthread_mutex_t semModificadorDeVidas; //Los semaforos solo para las variables globales
+>>>>>>> refactorPersonaje
+
+personajeGlobal_t personaje;
+t_config *configPersonaje;
+t_log *logger;
+char * ip_plataforma;
+char * puerto_orq;
+int socketOrquestador;
+
+int main(int argc, char*argv[]) {
+	int cantidadNiveles;
+
+	pthread_mutex_init(&semModificadorDeVidas, NULL);
+<<<<<<< HEAD
+	pthread_mutex_init(&mtxlPersPorNivel, NULL);
+	pthread_mutex_init(&semTerminoBien, NULL);
+	pthread_mutex_init(&semContinuar, NULL);
+	pthread_mutex_init(&semTermino, NULL);
+=======
+>>>>>>> refactorPersonaje
+
+	// Inicializa el log.
+	logger = logInit(argv, "PERSONAJE");
+
+	if (signal(SIGINT, muertoPorSenial) == SIG_ERR) {
+		log_error(logger, "Error en el manejo de la senal de muerte del personaje.\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
+	if (signal(SIGTERM, restarVida) == SIG_ERR) {
+		log_error(logger, "Error en el manejo de la senal de restar vidas del personaje.\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
+	if (signal(SIGUSR1, sig_aumentar_vidas) == SIG_ERR) {
+		log_error(logger, "Error en el manejo de la senal de de aumentar vidas del personaje.\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
+	// Creamos el archivo de Configuración
+	cargarArchivoConfiguracion(argv[1]);
+<<<<<<< HEAD
+	cantidadNiveles =list_size(personaje.listaNiveles);
+	hilosNiv = calloc(cantidadNiveles, sizeof(threadNivel_t));
+	pthread_mutex_lock(&semModificadorDeVidas);
+	personaje.vidas = personaje.vidasMaximas;
+	pthread_mutex_unlock(&semModificadorDeVidas);
+
+	int i;
+
+=======
+	cantidadNiveles = list_size(personaje.lPersonajes);
+>>>>>>> refactorPersonaje
+	//Me conecto con la plataforma para despues de terminar todos los niveles correctamente avisarle
+	socketOrquestador = connectToServer(ip_plataforma, atoi(puerto_orq), logger);
+	log_debug(logger, "El personaje se conecto con el orquestador");
+
+<<<<<<< HEAD
+	crearTodosLosHilos();
+	//char *join_return = tirarTodosLosHilos();
+
+	log_debug(logger, "llega antes de joinear");
+	char *join_return;
+	pthread_mutex_lock(&semContinuar);
+	continuar = true;
+	pthread_mutex_unlock(&semContinuar);
+	while(continuar){
+		pthread_mutex_lock(&semContinuar);
+		continuar = false;
+		pthread_mutex_unlock(&semContinuar);
+		for (i = 0; i < cantidadNiveles; i++) {
+			pthread_join(hilosNiv[i].thread, (void**)&join_return);
+			if(join_return != NULL)
+				log_debug(logger, "El personaje %c %s", personaje.simbolo, join_return);
+		}
+	}
+
+//	free(join_return);
+	//tirarTodosLosHilos();
+/*	if(join_return != NULL)
+		log_debug(logger, "El personaje %c %s", personaje.simbolo, join_return);
+*/
+	log_info(logger, "Se terminaron todos los hilos");
+	if ((personaje.vidas>0) && terminoBienTodosLosNiveles())//Termino t0do el plan de niveles correctamente
+	{
+		log_debug(logger, "se le notifica fin pla");
+		notificarFinPlanNiveles();//Le avisa al orquestador que se termino correctamente el plan de todos los niveles
+	}else
+	{
+		log_debug(logger, "NO se le notifica fin plan");
+	}
+=======
+	//vuelve a tirar todos los hilos por todos los niveles
+	int iNivel;
+	char *resultadoThread;
+	bool reiniciar;
+
+	do {
+		log_debug(logger, "Tiro los hilos para jugar en cada nivel");
+		sleep(1);
+		crearTodosLosHilos();
+		reiniciar = false;
+
+		for (iNivel = 0; iNivel < cantidadNiveles; iNivel++) {
+			personajeIndividual_t* pPersonaje;
+			pPersonaje = list_get(personaje.lPersonajes, iNivel);
+			pthread_join(*pPersonaje->thread, (void **)&resultadoThread);
+			free(pPersonaje->thread);
+		}
+
+		//Ya terminaron todos los hilos. Si murio el ultimo me va a decir que reinicie o no.
+		if (strcmp(resultadoThread, "reiniciar") == 0) {
+			reiniciar = true;
+			log_debug(logger, "El personaje %c termina su conexion y reinicia todos los niveles", personaje.simbolo);
+		}
+>>>>>>> refactorPersonaje
+
+	} while (reiniciar);
+
+	cerrarConexion(&socketOrquestador);
+	log_debug(logger, "El personaje se desconecto del orquestador");
+
+	log_destroy(logger);
+	config_destroy(configPersonaje);
+	int cantidadPersonajes = list_size(personaje.lPersonajes);
+
+	for (iNivel = 0; iNivel < cantidadPersonajes; iNivel++) {
+		personajeIndividual_t *pPersonajeNivel = (personajeIndividual_t *) list_get(personaje.lPersonajes, iNivel);
+		list_destroy(pPersonajeNivel->Objetivos);
+	}
+
+<<<<<<< HEAD
+	destruirSemaforos();
+	free(hilosNiv);
+	//free(puerto_orq);
+	//free(ip_plataforma);
+=======
+	list_destroy(personaje.lPersonajes);
+>>>>>>> refactorPersonaje
+
+	exit(EXIT_SUCCESS);
+
+}
+
+void notificarFinPlanNiveles(){
+	tPaquete pkgDevolverRecursos;
+	pkgDevolverRecursos.type   = P_FIN_PLAN_NIVELES;
+	pkgDevolverRecursos.length = 0;
+
+	enviarPaquete(socketOrquestador, &pkgDevolverRecursos, logger, "Se notifica al orquestador la finalizacion del plan de niveles del personaje correctamente");
+}
+
+void cargarArchivoConfiguracion(char* archivoConfiguracion){
+	personajeIndividual_t *personajeNivel;
+	//valida que los campos basicos esten en el archivo
+	configPersonaje  	   = config_try_create(archivoConfiguracion, "nombre,simbolo,Plan de Niveles,Vidas,orquestador");
+	// Obtenemos el nombre del personaje - global de solo lectura
+	personaje.nombre 	   = config_get_string_value(configPersonaje, "nombre");
+	// Obtenemos el simbolo - global de solo lectura
+	personaje.simbolo      = config_get_string_value(configPersonaje, "simbolo")[0];
+	personaje.vidasMaximas = config_get_int_value(configPersonaje, "Vidas"); //Obtenemos las vidas
+	personaje.vidas 	   = personaje.vidasMaximas;
+	personaje.reintentos   = 0;
+	// Obetenemos los datos del orquestador
+	char * dir_orq = config_get_string_value(configPersonaje, "orquestador");
+	obtenerIpYPuerto(dir_orq, ip_plataforma, puerto_orq);
+
+	//Obtenemos el plan de niveles
+	char** niveles = config_try_get_array_value(configPersonaje, "Plan de Niveles");
+	t_list* listaObjetivos;
+	personaje.lPersonajes = list_create();
+	int nroNivel;
+	char *stringABuscar = malloc(sizeof(char) * 25);
+	//Armamos lista de niveles con sus listas de objetivos del config
+	for (nroNivel = 0; niveles[nroNivel] != NULL; nroNivel++) {  //Cicla los niveles
+		sprintf(stringABuscar, "Obj[%s]", niveles[nroNivel]); //Arma el string a buscar
+		char** objetivos = config_try_get_array_value(configPersonaje, stringABuscar);
+		int nroObjetivo;
+		//Por cada nivel, genero una lista de objetivos
+		listaObjetivos = list_create();
+		for (nroObjetivo = 0; objetivos[nroObjetivo] != NULL; nroObjetivo++) {
+			list_add_new(listaObjetivos, objetivos[nroObjetivo], sizeof(char)); //Agrego a la lista
+		}
+<<<<<<< HEAD
+
+		//agregamos el nivel a la lista de niveles
+		//aux.nomNivel = malloc(sizeof(char) * strlen(niveles[i]));
+		//strcpy(aux.nomNivel, niveles[i]);
+		aux.nomNivel =string_duplicate(niveles[i]); //aux.nomNivel fixme
+		aux.Objetivos = listaObjetivos;
+		list_add_new(personaje.listaNiveles, &aux, sizeof(nivel_t));
+
+		i++;
+=======
+		personajeNivel = (personajeIndividual_t*) malloc(sizeof(personajeIndividual_t));
+		personajeNivel->nomNivel = malloc(sizeof(char) * strlen(niveles[nroNivel]));
+		strcpy(personajeNivel->nomNivel, niveles[nroNivel]);
+		personajeNivel->Objetivos = listaObjetivos;
+		list_add_new(personaje.lPersonajes, personajeNivel, sizeof(personajeIndividual_t));
+>>>>>>> refactorPersonaje
+	}
+
+	free(stringABuscar);
+}
+
+void crearTodosLosHilos() {
+	int iIndexPj;
+	int cantidadPersonajes = list_size(personaje.lPersonajes);
+	for (iIndexPj = 0;  iIndexPj < cantidadPersonajes; iIndexPj ++) {
+		personajeIndividual_t *personajeNivel = (personajeIndividual_t *)list_get(personaje.lPersonajes, iIndexPj);
+		personajeNivel->thread = malloc(sizeof(pthread_t));
+
+		//Tiro el hilo para jugar de cada nivel
+		if (pthread_create(personajeNivel->thread, NULL, jugar, (void *) personajeNivel)) {
+			log_error(logger, "pthread_create: %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void obtenerIpYPuerto(char *dirADividir, char * ip,  char * puerto){
+	ip_plataforma  = strtok(dirADividir, ":"); // Separar ip
+	puerto_orq 	   = strtok(NULL, ":"); // Separar puerto
+}
+
+<<<<<<< HEAD
+static void nivel_destroyer(nivel_t*nivel) {
+	free(nivel->nomNivel);
+	free(nivel);
+}
+
+void *jugar(void *args) {
+
+	//Recupero la informacion del nivel en el que juega el personaje
+
+	personajeIndividual_t personajePorNivel;
+
+	personajePorNivel.posX=0;
+	personajePorNivel.posY=0;
+	personajePorNivel.nivelQueJuego = (nivel_t *) args;
+	personajePorNivel.ultimoMovimiento=vacio;
+	pthread_mutex_lock(&semTerminoBien);
+	personajePorNivel.bienTerminado = false;
+	pthread_mutex_unlock(&semTerminoBien);
+	pthread_mutex_lock(&semTermino);
+	personajePorNivel.termino=false;
+	pthread_mutex_unlock(&semTermino);
+
+	bool murioPersonaje = false;
+=======
+void *jugar(void *vPersonajeNivel) {
+>>>>>>> refactorPersonaje
+
+	personajeIndividual_t* pPersonajePorNivel = (personajeIndividual_t *)vPersonajeNivel;
+	signal(SIGILL, deboMorir);
+	pPersonajePorNivel->posX = 0;
+	pPersonajePorNivel->posY = 0;
+	pPersonajePorNivel->posRecursoX=0;
+	pPersonajePorNivel->posRecursoY=0;
+	pPersonajePorNivel->recursoActual=0;
+	pPersonajePorNivel->socketPlataforma=0;
+	pPersonajePorNivel->ultimoMovimiento = vacio;
+	pPersonajePorNivel->murioEnNivel 	 = false;
+
+	bool finalizoNivel = false;
+
+	while (personaje.vidas>0 && !finalizoNivel) {
+
+<<<<<<< HEAD
+
+	while ((!personajeEstaMuerto(murioPersonaje)) && (!personajePorNivel.termino)) {
+=======
+		pPersonajePorNivel->socketPlataforma = connectToServer(ip_plataforma, atoi(puerto_orq), logger);
+		handshake_plataforma(pPersonajePorNivel);
+>>>>>>> refactorPersonaje
+
+		log_info(logger, "Vidas de %c: %d", personaje.simbolo, personaje.vidas);
+
+		for (pPersonajePorNivel->recursoActual=0; (pPersonajePorNivel->recursoActual < list_size(pPersonajePorNivel->Objetivos)) && (!personajeEstaMuerto(pPersonajePorNivel->murioEnNivel)); pPersonajePorNivel->recursoActual++) {
+
+			//Espera que el planificador le de el turno para pedir la posicion del recurso
+			recibirMensajeTurno(pPersonajePorNivel);
+
+			if (!personajeEstaMuerto(pPersonajePorNivel->murioEnNivel)) {
+
+				//agarra un recurso de la lista de objetivos del nivel
+				char* recurso = (char*) list_get(pPersonajePorNivel->Objetivos, pPersonajePorNivel->recursoActual);
+				pedirPosicionRecurso(pPersonajePorNivel, recurso);
+
+				while (!conseguiRecurso(pPersonajePorNivel) && !personajeEstaMuerto(pPersonajePorNivel->murioEnNivel)) {
+
+					//Espera que el planificador le de el turno para moverse
+					recibirMensajeTurno(pPersonajePorNivel);
+
+					//El personaje se mueve
+					moverAlPersonaje(pPersonajePorNivel);
+
+				}
+
+				if (!personajeEstaMuerto(pPersonajePorNivel->murioEnNivel)) {
+					//Espera que el planificador le de el turno para solicitar el recurso
+					recibirMensajeTurno(pPersonajePorNivel);
+					solicitarRecurso(pPersonajePorNivel, recurso);
+				}
+
+			}
+		} //Fin de for de objetivos
+
+<<<<<<< HEAD
+
+	}
+
+	if (!murioPersonaje){
+		log_info(logger, "El personaje ha completado el nivel correctamente.");
+		pthread_mutex_lock(&semTerminoBien);
+		personajePorNivel.bienTerminado=true;
+		pthread_mutex_unlock(&semTerminoBien);
+		pthread_mutex_lock(&semTermino);
+		personajePorNivel.termino=true;
+		pthread_mutex_unlock(&semTerminoBien);
+	}else{
+		pthread_mutex_lock(&semTerminoBien);
+		personajePorNivel.bienTerminado=false;
+		pthread_mutex_unlock(&semTerminoBien);
+		pthread_mutex_lock(&semTermino);
+		personajePorNivel.termino=true;
+		pthread_mutex_unlock(&semTerminoBien);
+	}
+=======
+		if (pPersonajePorNivel->murioEnNivel) {
+
+			pthread_mutex_lock(&semModificadorDeVidas);
+			if (personaje.vidas > 0) {
+				personaje.vidas--;
+				pthread_mutex_unlock(&semModificadorDeVidas);
+				log_debug(logger, "El personaje %c perdio una vida en %s", personaje.simbolo, pPersonajePorNivel->nomNivel);
+
+				if (personaje.vidas > 0) {
+					finalizoNivel = false;
+					pPersonajePorNivel->murioEnNivel = false;
+					desconectarPersonaje(pPersonajePorNivel);
+					sleep(1);
+				} else {
+					matarHilosExceptoYo(pPersonajePorNivel->nomNivel); //Mato a los otros hilos
+					desconectarPersonaje(pPersonajePorNivel);
+					consultarReinicio(); //Aqui es donde me asesino
+				}
+			}
+			pthread_mutex_unlock(&semModificadorDeVidas);
+		}
+		else {
+			finalizoNivel = true; //Ya termino este nivel
+		}
+
+	}//Fin del while
+>>>>>>> refactorPersonaje
+
+
+	log_debug(logger, "El personaje se desconecto de la plataforma");
+
+	char * exit_return = strdup("El personaje ha finalizado su plan de nivel");
+	pthread_exit((void *)exit_return);
+}
+
+void matarHilosExceptoYo(char *nombreNivel) {
+	int cantidadNiveles, indexNivel;
+	// LOCK
+	cantidadNiveles = list_size(personaje.lPersonajes);
+
+    for (indexNivel = 0; indexNivel < cantidadNiveles; indexNivel++) {
+    	personajeIndividual_t *unPersonajeNivel;
+    	unPersonajeNivel = list_get(personaje.lPersonajes, indexNivel);
+    	if (strcmp(unPersonajeNivel->nomNivel, nombreNivel) != 0) { //No me quiero asesinar! Aún.
+    		close(unPersonajeNivel->socketPlataforma);
+    		log_debug(logger, "Soy el hilo del %s y voy a matar a %s", nombreNivel, unPersonajeNivel->nomNivel);
+    		pthread_kill(*unPersonajeNivel->thread, SIGILL); //Le manda señal SIGILL a cada hilo
+    	}
+    }
+    //UNLOCK
+}
+
+void deboMorir() { //Este captura la señal para cada hilo
+	pthread_exit((void*)"reiniciar");
+}
+
+void asesinarme(char * resultado) { //Ahora si quiero morir :'(
+	pthread_exit((void*)(resultado));
+}
+
+bool personajeEstaMuerto(bool murioPersonaje){
+	//si esta muerto por alguna señal o porque se quedo sin vidas
+	return (murioPersonaje || personaje.vidas<=0);
+}
+
+void desconectarPersonaje(personajeIndividual_t* personajePorNivel){
+	close(personajePorNivel->socketPlataforma);
+	personajePorNivel->socketPlataforma = 0;
+}
+
+bool conseguiRecurso(personajeIndividual_t *personajePorNivel) {
+	return ((personajePorNivel->posY == personajePorNivel->posRecursoY) && (personajePorNivel->posX == personajePorNivel->posRecursoX));
+}
+
+void moverAlPersonaje(personajeIndividual_t* personajePorNivel){
+	tDirMovimiento  mov;
+
+	mov = calcularYEnviarMovimiento(personajePorNivel);
+	//Actualizo mi posición y de acuerdo a eso armo mensaje de TURNO
+
+	actualizaPosicion(&mov, personajePorNivel);
+}
+
+void solicitarRecurso(personajeIndividual_t* personajePorNivel, char *recurso){
+
+	tMensaje tipoMensaje;
+	tPregPosicion recursoSolicitado;
+	recursoSolicitado.simbolo=personaje.simbolo;
+	recursoSolicitado.recurso=*recurso;
+
+	tPaquete pkgSolicitudRecurso;
+	serializarPregPosicion(P_SOLICITUD_RECURSO, recursoSolicitado, &pkgSolicitudRecurso);
+
+	char *msjInfo = malloc(100); //Lo agrego para saber que hilo de cual nivel hizo la solicitud
+	sprintf(msjInfo, "%s: El personaje le envia la solicitud del recurso a la plataforma", personajePorNivel->nomNivel);
+
+	enviarPaquete(personajePorNivel->socketPlataforma, &pkgSolicitudRecurso, logger, msjInfo);
+
+	char* sPayload;
+	sprintf(msjInfo, "%s: El personaje recibe respuesta de la solicitud del recurso a la plataforma", personajePorNivel->nomNivel);
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, msjInfo);
+	free(msjInfo);
+
+	switch(tipoMensaje){
+		case PL_RECURSO_OTORGADO:{
+<<<<<<< HEAD
+			log_info(logger, "El personaje recibe el recurso");
+			pthread_mutex_lock(&semTerminoBien);
+			(*personajePorNivel).bienTerminado=true;
+			pthread_mutex_unlock(&semTerminoBien);
+			if((*personajePorNivel).recursoActual==0){
+				pthread_mutex_lock(&semContinuar);
+				continuar=false;
+				pthread_mutex_unlock(&semContinuar);
+				pthread_mutex_lock(&semTermino);
+				(*personajePorNivel).termino=true;
+				pthread_mutex_unlock(&semTermino);
+				log_debug(logger, "antes de matar hilo");
+				matarHilo(*personajePorNivel);
+				log_debug(logger, "despues de matar hilo");
+			}
+			break;
+		}
+		case PL_RECURSO_INEXISTENTE:{
+			log_error(logger, "El recurso pedido por el personaje no existe.");
+			pthread_mutex_lock(&semTerminoBien);
+			(*personajePorNivel).bienTerminado=false;
+			pthread_mutex_unlock(&semTerminoBien);
+			pthread_mutex_lock(&semTermino);
+			(*personajePorNivel).termino=true;
+			pthread_mutex_unlock(&semTermino);
+=======
+			log_info(logger, "%s: El personaje recibe el recurso", personajePorNivel->nomNivel);
+			break;
+		}
+		case PL_RECURSO_INEXISTENTE:{
+			log_error(logger, "%s: El recurso pedido por el personaje no existe.", personajePorNivel->nomNivel);
+>>>>>>> refactorPersonaje
+			exit(EXIT_FAILURE);
+			break;
+		}
+		case PL_MUERTO_POR_ENEMIGO:{
+			log_info(logger, "%s: El personaje se murio por enemigos", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+		}
+		case PL_MUERTO_POR_DEADLOCK:{
+			log_info(logger, "%s: El personaje se murio por deadlock", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+		}
+		default: {
+<<<<<<< HEAD
+			log_error(logger, "Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_SOLICITUD_RECURSO", enumToString(tipoMensaje));
+			pthread_mutex_lock(&semTerminoBien);
+			(*personajePorNivel).bienTerminado=false;
+			pthread_mutex_unlock(&semTerminoBien);
+			pthread_mutex_lock(&semTermino);
+			(*personajePorNivel).termino=true;
+			pthread_mutex_unlock(&semTermino);
+=======
+			log_error(logger, "%s: Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_SOLICITUD_RECURSO", personajePorNivel->nomNivel, enumToString(tipoMensaje));
+>>>>>>> refactorPersonaje
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+	free(sPayload);
+}
+
+<<<<<<< HEAD
+void seMuereSinSenal(personajeIndividual_t *personajePorNivel){
+
+	desconectarPersonaje(personajePorNivel);
+
+	if (personaje.vidas>0){
+		log_debug(logger, "aun tiene vidas");
+		restarVida();
+		pthread_mutex_lock(&semTerminoBien);
+		(*personajePorNivel).bienTerminado=false;
+		pthread_mutex_unlock(&semTerminoBien);
+		pthread_mutex_lock(&semTermino);
+		(*personajePorNivel).termino=false;
+		pthread_mutex_unlock(&semTermino);
+		/* todo ver si es necesario despues de //Reiniciar hilos
+		log_debug(logger, "Se mata el hilo");
+		matarHilo(*personajePorNivel);
+		log_debug(logger, "HILO MUERTO");
+		//Se vuelve a conectar con la plataforma
+		(*personajePorNivel).socketPlataforma = connectToServer(ip_plataforma, atoi(puerto_orq), logger);
+		handshake_plataforma(personajePorNivel);
+		reiniciarObjetivosNivel(personajePorNivel);
+*/
+		pthread_mutex_lock(&semContinuar);
+		continuar=true;
+		pthread_mutex_unlock(&semContinuar);
+
+		//Reiniciar hilos
+		reiniciarHilo(personajePorNivel);
+		/*
+		crearHiloPersonajePorNivel(personajePorNivel);
+		char *join_return = tirarHiloPersonajePorNivel(personajePorNivel);
+		if(join_return != NULL)
+			log_debug(logger, "El personaje %c, ha devuelto '%s' al tirar el hilo del personaje", personaje.simbolo, join_return);
+		 */
+
+
+	}else{
+		pthread_mutex_lock(&semTerminoBien);
+		(*personajePorNivel).bienTerminado=false;
+		pthread_mutex_unlock(&semTerminoBien);
+		pthread_mutex_lock(&semTermino);
+		(*personajePorNivel).termino=true;
+		pthread_mutex_unlock(&semTermino);
+		reiniciarJuego();
+	}
+
+
+}
+
+
+void reiniciarObjetivosNivel(personajeIndividual_t* personajePorNivel){
+	//reiniciar los objetivos de ese nivelper
+	(*personajePorNivel).recursoActual = 0;
+
+}
+
+void reiniciarObjetivosTodosLosNiveles(){
+	// Reinicia todos los objetivos de todos los niveles
+
+	void _reiniciarObjetivosNivel(char* key, personajeIndividual_t* personajePorNivel) {
+		reiniciarObjetivosNivel(personajePorNivel);
+	}
+
+	dictionary_iterator(listaPersonajePorNiveles, (void*) _reiniciarObjetivosNivel);
+
+}
+
+void crearTodosLosHilos(){
+	int i;
+	for( i = 0;  i < cantidadNiveles; i ++) {
+		nivel_t *nivelLevantador = (nivel_t *)list_get(personaje.listaNiveles, i);
+		//creo estructura del nivel que va a jugar cada hilo
+		hilosNiv[i].nivel.nomNivel = nivelLevantador->nomNivel;
+		hilosNiv[i].nivel.Objetivos = nivelLevantador->Objetivos;
+		hilosNiv[i].nivel.num_of_thread = i;
+
+		//Tiro el hilo para jugar de cada nivel
+		if (pthread_create(&hilosNiv[i].thread, NULL, jugar, (void *) &hilosNiv[i].nivel)) {
+			log_error(logger, "pthread_create: %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void crearHiloPersonajePorNivel(personajeIndividual_t* personajePorNivel){
+	threadNivel_t* threadAReiniciar =devolverThread(personajePorNivel->nivelQueJuego);
+	pthread_create(&(*threadAReiniciar).thread, NULL, jugar, (void *) &(*threadAReiniciar).nivel);
+}
+
+void reiniciarHilo(personajeIndividual_t* personajePorNivel){
+	threadNivel_t* threadAReiniciar =devolverThread(personajePorNivel->nivelQueJuego);
+	threadNivel_t aux = (*threadAReiniciar);
+	pthread_create(&(*threadAReiniciar).thread, NULL, jugar, (void *) &(*threadAReiniciar).nivel);
+	pthread_cancel(aux.thread);
+}
+
+void reiniciarTodosLosHilos(){
+
+	void _reiniciarHilo(char* key, personajeIndividual_t* personajePorNivel) {
+		reiniciarHilo(personajePorNivel);
+	}
+
+	dictionary_iterator(listaPersonajePorNiveles, (void*) _reiniciarHilo);
+
+}
+
+char* tirarHiloPersonajePorNivel(personajeIndividual_t* personajePorNivel){
+	//Tirar el hilo del nivel que esta jugando el personajePorNivel
+	char *join_return;
+
+	threadNivel_t* threadAEliminar =devolverThread((*personajePorNivel).nivelQueJuego);
+	if(threadAEliminar != NULL)
+		pthread_join((*threadAEliminar).thread, (void**)&join_return);
+
+	return join_return;
+}
+
+char* tirarTodosLosHilos(){
+	//vuelve a tirar todos los hilos por todos los niveles
+	int i;
+	char *join_return;
+	pthread_mutex_lock(&semContinuar);
+	continuar = true;
+	pthread_mutex_unlock(&semContinuar);
+	while(continuar){
+		pthread_mutex_lock(&semContinuar);
+		continuar = false;
+		pthread_mutex_unlock(&semContinuar);
+		for (i = 0; i < cantidadNiveles; i++) {
+			pthread_join(hilosNiv[i].thread, (void**)&join_return);
+		}
+	}
+
+	return join_return;
+}
+
+
+
+=======
+>>>>>>> refactorPersonaje
+tDirMovimiento calcularYEnviarMovimiento(personajeIndividual_t *personajePorNivel){
+	tMensaje tipoMensaje;
+	tMovimientoPers movimientoAEnviar;
+
+
+	movimientoAEnviar.simbolo=personaje.simbolo;
+
+	log_debug(logger, "Se calcula el movimiento a realizar.");
+	calculaMovimiento(personajePorNivel);
+	movimientoAEnviar.direccion = (*personajePorNivel).ultimoMovimiento;
+	log_debug(logger, "Movimiento calculado: personaje %c en (%d, %d)", personaje.simbolo, personajePorNivel->posX, personajePorNivel->posY);
+
+	tPaquete pkgMovimiento;
+	serializarMovimientoPers(P_MOVIMIENTO, movimientoAEnviar, &pkgMovimiento);
+
+	char *msjInfo = malloc(100); //Lo agrego para saber que hilo de cual nivel hizo la solicitud
+	sprintf(msjInfo, "%s: Envio pedido de movimiento del personaje", personajePorNivel->nomNivel);
+	enviarPaquete(personajePorNivel->socketPlataforma, &pkgMovimiento, logger, msjInfo);
+
+	char* sPayload;
+	sprintf(msjInfo, "%s: Se espera confirmacion del movimiento", personajePorNivel->nomNivel);
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, "Se espera confirmacion del movimiento");
+	free(msjInfo);
+
+	switch(tipoMensaje){
+		case PL_MUERTO_POR_ENEMIGO:
+			log_info(logger, "%s: El personaje se murio por enemigos mientra que calculaba movimiento", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+
+		case PL_MUERTO_POR_DEADLOCK:
+			log_info(logger, "%s: El personaje se murio por deadlock", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+
+		case PL_CONFIRMACION_MOV:
+			log_info(logger, "%s: Movimiento confirmado", personajePorNivel->nomNivel);
+			break;
+
+		default:
+			log_error(logger, "%s: Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_CONFIRMACION_MOV", personajePorNivel->nomNivel, enumToString(tipoMensaje));
+			exit(EXIT_FAILURE);
+			break;
+	}
+
+	return personajePorNivel->ultimoMovimiento;
+
+}
+
+void recibirMensajeTurno(personajeIndividual_t *personajePorNivel){
+	tMensaje tipoMensaje;
+	char* sPayload;
+
+	char *msjInfo = malloc(100); //Lo agrego para saber que hilo de cual nivel hizo la solicitud
+	sprintf(msjInfo, "%s: Espero Turno", personajePorNivel->nomNivel);
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, msjInfo);
+	free(msjInfo);
+
+	switch (tipoMensaje) {
+		case PL_OTORGA_TURNO:
+			log_info(logger, "%s: Se recibe turno", personajePorNivel->nomNivel);
+			break;
+
+		case PL_MUERTO_POR_ENEMIGO:
+			log_info(logger, "%s: El personaje se murio por enemigos mientra que recibia turno", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+
+		case PL_MUERTO_POR_DEADLOCK:
+			log_info(logger, "%s: El personaje se murio por deadlock", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+
+		default:
+			log_error(logger, "%s: Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_OTORGA_TURNO", personajePorNivel->nomNivel, enumToString(tipoMensaje));
+			exit(EXIT_FAILURE);
+			break;
+	}
+}
+
+void pedirPosicionRecurso(personajeIndividual_t* personajePorNivel, char* recurso){
+
+	tMensaje tipoMensaje;
+	tPregPosicion solicitudRecurso;
+	solicitudRecurso.simbolo=personaje.simbolo;
+	solicitudRecurso.recurso= *recurso;
+
+	tPaquete pkgSolicitudRecurso;
+	serializarPregPosicion(P_POS_RECURSO, solicitudRecurso, &pkgSolicitudRecurso);
+	char *msjInfo = malloc(100); //Lo agrego para saber que hilo de cual nivel hizo la solicitud
+	sprintf(msjInfo, "%s: Solicito la posicion de un recurso", personajePorNivel->nomNivel);
+
+	enviarPaquete(personajePorNivel->socketPlataforma, &pkgSolicitudRecurso, logger, msjInfo);
+
+	char* sPayload;
+	sprintf(msjInfo, "%s: Recibo posicion del recurso", personajePorNivel->nomNivel);
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, msjInfo);
+	free(msjInfo);
+
+	switch (tipoMensaje){
+		case PL_POS_RECURSO:{
+			tRtaPosicion* rtaSolicitudRecurso;
+			rtaSolicitudRecurso = deserializarRtaPosicion(sPayload);
+			personajePorNivel->posRecursoX = rtaSolicitudRecurso->posX;
+			personajePorNivel->posRecursoY = rtaSolicitudRecurso->posY;
+			log_debug(logger, "%s: Recurso %c en posicion (%d, %d)", personajePorNivel->nomNivel, *recurso, personajePorNivel->posRecursoX, personajePorNivel->posRecursoY);
+			break;
+		}
+		case PL_RECURSO_INEXISTENTE:{
+<<<<<<< HEAD
+			log_error(logger, "El recurso %c no existe, reintentar pedido", recurso);
+			reintentarSolicitudRecurso(personajePorNivel,&pkgSolicitudRecurso, recurso);
+			break;
+		}
+		default:{
+			log_error(logger, "Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_POS_RECURSO", enumToString(tipoMensaje));
+			pthread_mutex_lock(&semTerminoBien);
+			(*personajePorNivel).bienTerminado=false;
+			pthread_mutex_unlock(&semTerminoBien);
+			pthread_mutex_lock(&semTermino);
+			(*personajePorNivel).termino=true;
+			pthread_mutex_unlock(&semTermino);
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+}
+
+void reintentarSolicitudRecurso(personajeIndividual_t* personajePorNivel, tPaquete* pkgHandshake, char* recurso){
+
+	sleep(800); //espero un poquito antes de conectarme de nuevo
+
+	enviarPaquete(personajePorNivel->socketPlataforma, pkgHandshake, logger, "Se reenvia solicitud de la posicion del recurso a la plataforma");
+
+	tMensaje tipoMensaje;
+	char* sPayload;
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, "Recibo estado en el que quedo el personaje");
+
+	switch (tipoMensaje){
+		case PL_POS_RECURSO:{
+			tRtaPosicion* rtaSolicitudRecurso;
+			rtaSolicitudRecurso = deserializarRtaPosicion(sPayload);
+
+			personajePorNivel->posRecursoX = rtaSolicitudRecurso->posX;
+			personajePorNivel->posRecursoY = rtaSolicitudRecurso->posY;
+
+			break;
+		}
+		case PL_RECURSO_INEXISTENTE:{
+			log_error(logger, "El recurso %c no existe, reintentar pedido", *recurso);
+			reintentarSolicitudRecurso(personajePorNivel,pkgHandshake, recurso);
+			break;
+		}
+		default:{
+			log_error(logger, "Llego un mensaje (tipoMensaje: %d) cuando debia llegar PL_POS_RECURSO", tipoMensaje);
+			pthread_mutex_lock(&semTerminoBien);
+			(*personajePorNivel).bienTerminado=false;
+			pthread_mutex_unlock(&semTerminoBien);
+			pthread_mutex_lock(&semTermino);
+			(*personajePorNivel).termino=true;
+			pthread_mutex_unlock(&semTermino);
+=======
+			log_error(logger, "%s: El recurso %c no existe", personajePorNivel->nomNivel, recurso);
+			exit(EXIT_FAILURE);
+			break;
+		}
+		case PL_MUERTO_POR_ENEMIGO:{
+			log_info(logger, "%s: El personaje se murio por enemigos mientra que recibia turno", personajePorNivel->nomNivel);
+			personajePorNivel->murioEnNivel=true;
+			break;
+		}
+		default:{
+			log_error(logger, "%s: Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_POS_RECURSO", personajePorNivel->nomNivel, enumToString(tipoMensaje));
+>>>>>>> refactorPersonaje
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+}
+
+void handshake_plataforma(personajeIndividual_t* personajePorNivel){
+	tMensaje tipoMensaje;
+	tHandshakePers handshakePers;
+	handshakePers.simbolo = personaje.simbolo;
+<<<<<<< HEAD
+	//handshakePers.nombreNivel = malloc(sizeof(personajePorNivel->nivelQueJuego->nomNivel));
+	handshakePers.nombreNivel = string_duplicate(personajePorNivel->nivelQueJuego->nomNivel);
+=======
+	handshakePers.nombreNivel = malloc(sizeof(personajePorNivel->nomNivel));
+	strcpy(handshakePers.nombreNivel, personajePorNivel->nomNivel);
+>>>>>>> refactorPersonaje
+	/* Se crea el paquete */
+	tPaquete pkgHandshake;
+	serializarHandshakePers(P_HANDSHAKE, handshakePers, &pkgHandshake);
+	char *msjInfo = malloc(100); //Lo agrego para saber que hilo de cual nivel hizo la solicitud
+	sprintf(msjInfo, "%s: Se envia saludo a la plataforma", personajePorNivel->nomNivel);
+
+	enviarPaquete(personajePorNivel->socketPlataforma, &pkgHandshake, logger, msjInfo);
+
+	char* sPayload;
+	sprintf(msjInfo, "%s: Recibo si existe el nivel solicitado", personajePorNivel->nomNivel);
+	recibirPaquete(personajePorNivel->socketPlataforma, &tipoMensaje, &sPayload, logger, msjInfo);
+	free(msjInfo);
+
+	switch(tipoMensaje){
+		case PL_HANDSHAKE:
+			log_info(logger, "%s: La plataforma le devolvio el handshake al personaje correctamente", personajePorNivel->nomNivel);
+			break;
+
+		case PL_NIVEL_INEXISTENTE:
+			log_info(logger, "%s: El nivel requerido por el personaje no existe.", personajePorNivel->nomNivel);
+			exit(EXIT_FAILURE);
+			break;
+
+		case PL_PERSONAJE_REPETIDO:
+			log_error(logger, "%s: Se esta tratando de conectar un personaje que ya esta conectado con la plataforma", personajePorNivel->nomNivel);
+			exit(EXIT_FAILURE);
+			break;
+
+		default:
+<<<<<<< HEAD
+			log_error(logger, "Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_HANDSHAKE", enumToString(tipoMensaje));
+=======
+			log_error(logger, "%s: Llego un mensaje (tipoMensaje: %s) cuando debia llegar PL_HANDSHAKE", personajePorNivel->nomNivel, enumToString(tipoMensaje));
+			exit(EXIT_FAILURE);
+>>>>>>> refactorPersonaje
+			break;
+	}
+}
+
+void cerrarConexion(int * socketPlataforma){
+	close(*socketPlataforma);
+	log_debug(logger, "La conexion con la plataforma ha sido cerrada.");
+}
+
+void calculaMovimiento(personajeIndividual_t *personajePorNivel){
+
+	if(!conseguiRecurso(personajePorNivel)){
+		switch (personajePorNivel->ultimoMovimiento)
+		{
+			case derecha: case izquierda:
+				//ver si se puede mover para abajo o arriba
+				if(tieneMovimientoVertical(*personajePorNivel))
+					moverVertical(personajePorNivel);
+				else if(tieneMovimientoHorizontal(*personajePorNivel))
+					moverHorizontal(personajePorNivel);
+
+				break;
+
+			case arriba: case abajo:
+				if(tieneMovimientoHorizontal(*personajePorNivel))
+					moverHorizontal(personajePorNivel);
+				else if(tieneMovimientoVertical(*personajePorNivel))
+					moverVertical(personajePorNivel);
+
+				break;
+
+			case vacio:
+				if(tieneMovimientoVertical(*personajePorNivel))
+					moverVertical(personajePorNivel);
+				else if(tieneMovimientoHorizontal(*personajePorNivel))
+					moverHorizontal(personajePorNivel);
+
+				if(tieneMovimientoHorizontal(*personajePorNivel))
+					moverHorizontal(personajePorNivel);
+				else if(tieneMovimientoVertical(*personajePorNivel))
+					moverVertical(personajePorNivel);
+
+				break;
+
+			default:
+				log_error(logger, "El ultimo movimiento realizado no fue un movimiento permitido.");
+				exit(EXIT_FAILURE);
+				break;
+
+		}
+	}
+}
+
+bool tieneMovimientoVertical(personajeIndividual_t personajePorNivel){
+	return (personajePorNivel.posY != personajePorNivel.posRecursoY);
+}
+
+bool tieneMovimientoHorizontal(personajeIndividual_t personajePorNivel){
+	return (personajePorNivel.posX != personajePorNivel.posRecursoX);
+}
+
+void moverHorizontal(personajeIndividual_t *personajePorNivel){
+
+	if (personajePorNivel->posX < personajePorNivel->posRecursoX)
+		(*personajePorNivel).ultimoMovimiento = derecha;
+	else if (personajePorNivel->posX > personajePorNivel->posRecursoX)
+		(*personajePorNivel).ultimoMovimiento = izquierda;
+
+}
+
+void moverVertical(personajeIndividual_t *personajePorNivel){
+
+	if (personajePorNivel->posY < personajePorNivel->posRecursoY)
+		personajePorNivel->ultimoMovimiento = abajo;
+	else if (personajePorNivel->posY > personajePorNivel->posRecursoY)
+		personajePorNivel->ultimoMovimiento = arriba;
+
+}
+
+void actualizaPosicion(tDirMovimiento* movimiento, personajeIndividual_t *personajePorNivel) {
+	// Actualiza las variables posicion del personaje a partir del movimiento que recibe por parametro.
+	// El eje Y es alreves, por eso para ir para arriba hay que restar en el eje y.
+	switch (*movimiento) {
+		case arriba:
+			personajePorNivel->posY--;
+			break;
+		case abajo:
+			personajePorNivel->posY++;
+			break;
+		case derecha:
+			personajePorNivel->posX++;
+			break;
+		case izquierda:
+			personajePorNivel->posX--;
+			break;
+		default:
+			break;
+		case vacio:
+			log_error(logger, "Se intenta actualizar la posicion a VACIO");
+			break;
+	}
+
+}
+
+void sig_aumentar_vidas() {
+	pthread_mutex_lock(&semModificadorDeVidas);
+	personaje.vidas++;
+	pthread_mutex_unlock(&semModificadorDeVidas);
+	log_debug(logger, "Se le ha agregado una vida por senial.");
+	log_debug(logger, "Vidas de %c = %d", personaje.simbolo, personaje.vidas);
+}
+
+void restarVida(){
+	pthread_mutex_lock(&semModificadorDeVidas);
+<<<<<<< HEAD
+	personaje.vidas--;
+	pthread_mutex_unlock(&semModificadorDeVidas);
+
+	if (personaje.vidas <= 0) {
+		desconectarPersonajeDeTodoNivel();
+		/*
+		matarHilos();*/
+		reiniciarJuego();
+
+	}/*else{
+		continuar=true;
+	}*/
+
+
+=======
+	personaje.vidas--; //TODO Validar si no le quedaran vidas
+	pthread_mutex_unlock(&semModificadorDeVidas);
+>>>>>>> refactorPersonaje
+	log_debug(logger, "Se le ha restado una vida.");
+	log_debug(logger, "Vidas de %c = %d", personaje.simbolo, personaje.vidas);
+}
+
+//Para la señal SIGINT
+void matarHilos() {
+	int cantidadPersonajes = list_size(personaje.lPersonajes);
+	int indexPersonaje;
+	personajeIndividual_t *pPersonajePorNivel;
+	for (indexPersonaje = 0; indexPersonaje < cantidadPersonajes; indexPersonaje++) {
+		pPersonajePorNivel = list_get(personaje.lPersonajes, indexPersonaje);
+		pthread_cancel(*pPersonajePorNivel->thread);
+	}
+}
+
+//Para la Señal SIGINT
+void desconectarPersonajeDeTodoNivel() {
+	//desconecta a todos los personajes por nivel
+
+	int cantidadPersonajes = list_size(personaje.lPersonajes);
+	int indexPersonaje;
+	personajeIndividual_t *pPersonajePorNivel;
+
+	for (indexPersonaje = 0; indexPersonaje < cantidadPersonajes; indexPersonaje++) {
+		pPersonajePorNivel = list_get(personaje.lPersonajes, indexPersonaje);
+		desconectarPersonaje(pPersonajePorNivel);
+	}
+}
+
+void muertoPorSenial() {
+
+	pthread_mutex_lock(&semModificadorDeVidas);
+	personaje.vidas=0;
+	pthread_mutex_unlock(&semModificadorDeVidas);
+
+<<<<<<< HEAD
+	log_info(logger, "El personaje ha muerto por la senal kill");
+	pthread_mutex_lock(&semContinuar);
+	continuar=false;
+	pthread_mutex_unlock(&semContinuar);
+	desconectarPersonajeDeTodoNivel();
+	matarHilos();
+
+	log_destroy(logger);
+	destruirArchivoConfiguracion(configPersonaje);
+	int i;
+	for (i = 0; i < list_size(personaje.listaNiveles); i++) {
+		nivel_t *aux = (nivel_t *) list_get(personaje.listaNiveles, i);
+		list_destroy(aux->Objetivos);
+	}
+	list_destroy_and_destroy_elements(personaje.listaNiveles, (void *) nivel_destroyer);
+
+	destruirSemaforos();
+
+	exit(EXIT_FAILURE);
+}
+
+void destruirSemaforos(){
+	pthread_mutex_destroy(&semMovement);
+	pthread_mutex_destroy(&semModificadorDeVidas);
+	pthread_mutex_destroy(&semTerminoBien);
+	pthread_mutex_destroy(&mtxlPersPorNivel);
+	pthread_mutex_destroy(&semContinuar);
+	pthread_mutex_destroy(&semTermino);
+}
+
+void matarHilo(personajeIndividual_t personajePorNivel){
+
+	threadNivel_t* threadAEliminar;
+	threadAEliminar = malloc(sizeof(threadNivel_t));
+	threadAEliminar=devolverThread(personajePorNivel.nivelQueJuego);
+
+	if(threadAEliminar != NULL){
+		log_debug(logger, "4 1");
+		pthread_cancel((*threadAEliminar).thread);
+		log_debug(logger, "4 2");
+	}
+	log_debug(logger, "5");
+	free(threadAEliminar);
+	log_debug(logger, "6");
+}
+=======
+	log_info(logger, "Capture la señal SIGINT y ahora debo morir");
+
+	matarHilos();
+	desconectarPersonajeDeTodoNivel();
+
+	pthread_mutex_unlock(&semModificadorDeVidas);
+	log_info(logger, "El personaje ha muerto por la senal kill");
+	pthread_mutex_destroy(&semModificadorDeVidas);
+
+	log_destroy(logger);
+	config_destroy(configPersonaje);
+>>>>>>> refactorPersonaje
+
+	int cantidadPersonajes = list_size(personaje.lPersonajes);
+	int indexPersonaje;
+	personajeIndividual_t *pPersonajePorNivel;
+
+	for (indexPersonaje = 0; indexPersonaje < cantidadPersonajes; indexPersonaje++) {
+		pPersonajePorNivel = list_get(personaje.lPersonajes, indexPersonaje);
+		list_destroy(pPersonajePorNivel->Objetivos);
+	}
+
+	list_destroy(personaje.lPersonajes);
+
+	exit(EXIT_FAILURE);
+}
+
+<<<<<<< HEAD
+void reiniciarJuego(){
+	char n;
+
+	log_info(logger, "El personaje murio por quedarse sin vidas.");
+	log_debug(logger, "Se procede a desconectarse de la plataforma");
+	//matarHilos(); fixme lo saco por el reiniciar
+	desconectarPersonajeDeTodoNivel();
+	log_debug(logger, "Ya se desconecto de la plataforma, se pregunta ");
+=======
+void consultarReinicio(){
+	char cRespuesta;
+>>>>>>> refactorPersonaje
+
+	printf("El personaje ha muerto ¿Desea volver a intentar? (Y/N) ");
+
+	cRespuesta = getchar();
+
+	while ((toupper(cRespuesta) != 'N') && (toupper(cRespuesta) != 'Y')) {
+		printf("No entiendo ese comando \n");
+		printf("¿Desea volver a intentar? (Y/N) \n");
+		cRespuesta = getchar();
+	}
+
+	if (toupper(cRespuesta) == 'Y') {
+		personaje.reintentos++;
+<<<<<<< HEAD
+		reiniciarObjetivosTodosLosNiveles();
+
+
+		/*
+		crearTodosLosHilos();//corre los hilos
+		char *join_return = tirarTodosLosHilos();//devuelve el estado de los hilos
+		if(join_return != NULL)
+			log_debug(logger, "El personaje %c, ha devuelto '%s' al tirar todos los hilos", personaje.simbolo, join_return);
+		*/
+
+		reiniciarTodosLosHilos();
+		pthread_mutex_lock(&semContinuar);
+		continuar =true;
+		pthread_mutex_unlock(&semContinuar);
+		pthread_mutex_lock(&semModificadorDeVidas);
+		personaje.vidas = personaje.vidasMaximas;
+		pthread_mutex_unlock(&semModificadorDeVidas);
+	}
+
+	if (n == 'N'){
+		pthread_mutex_lock(&semContinuar);
+		continuar = false; //cierra el personaje
+		pthread_mutex_unlock(&semContinuar);
+		matarHilos();
+	}
+
+=======
+		personaje.vidas = personaje.vidasMaximas;
+		log_info(logger, "Se vuelve a jugar. Numero de reintentos: %d");
+		asesinarme("reiniciar");
+
+	} else if (toupper(cRespuesta) == 'N') {
+		asesinarme("Fin del juego");
+	}
+
+>>>>>>> refactorPersonaje
+}
+
